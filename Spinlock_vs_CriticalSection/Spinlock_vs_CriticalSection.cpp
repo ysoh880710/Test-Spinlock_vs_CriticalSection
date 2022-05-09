@@ -14,6 +14,16 @@ alignas(64ull) long long g_llValue = 0ll;
 alignas(64ull) long long g_llLock = 0ll;
 alignas(64ull) _RTL_CRITICAL_SECTION g_stCriticalSection{};
 
+struct SValue
+{
+    //long long g_llLock;
+    long long llValue;
+    _RTL_CRITICAL_SECTION stCriticalSection;
+    unsigned char pPadding[16];
+};
+
+alignas(64ull) SValue g_pValue2[8]{};
+
 unsigned long __stdcall Thread(void* const _pParameter)
 {
     const unsigned long long ullThreadIndex = reinterpret_cast<unsigned long long>(_pParameter);
@@ -23,7 +33,7 @@ unsigned long __stdcall Thread(void* const _pParameter)
         // Spinlock
         //while (true)
         //{
-        //    if (_InterlockedCompareExchange64(&g_llLock, 1ll, 0ll) == 0ll)
+        //    if (_InterlockedCompareExchange64(&g_pValue2[ullThreadIndex].g_llLock, 1ll, 0ll) == 0ll)
         //    {
         //        break;
         //    }
@@ -31,16 +41,17 @@ unsigned long __stdcall Thread(void* const _pParameter)
         //    Sleep(0ul);
         //}
         //
-        //++g_llValue;
+        ////++g_llValue;
+        //++g_pValue2[ullThreadIndex].llValue;
         //
-        //_InterlockedExchange64(&g_llLock, 0ll);
+        //_InterlockedExchange64(&g_pValue2[ullThreadIndex].g_llLock, 0ll);
 
         // Critical section
-        EnterCriticalSection(&g_stCriticalSection);
-        
-        ++g_llValue;
-        
-        LeaveCriticalSection(&g_stCriticalSection);
+        //EnterCriticalSection(&g_pValue2[ullThreadIndex].stCriticalSection);
+        //
+        //++g_pValue2[ullThreadIndex].llValue;
+        //
+        //LeaveCriticalSection(&g_pValue2[ullThreadIndex].stCriticalSection);
     }
 
     return 0ul;
@@ -49,13 +60,18 @@ unsigned long __stdcall Thread(void* const _pParameter)
 int main()
 {
     // Create event
-    g_pThreadEvent = CreateEventW(nullptr, 0, 0, nullptr);
-    if (g_pThreadEvent == nullptr)
-    {
-        // TODO : Rollback
-    }
+    //g_pThreadEvent = CreateEventW(nullptr, 0, 0, nullptr);
+    //if (g_pThreadEvent == nullptr)
+    //{
+    //    // TODO : Rollback
+    //}
 
     InitializeCriticalSection(&g_stCriticalSection);
+
+    for (unsigned long long i = 0ull; i < 8ull; ++i)
+    {
+        InitializeCriticalSection(&g_pValue2[i].stCriticalSection);
+    }
 
     // Create threads
     for (unsigned long long i = 0ull; i < 8ull; ++i)
@@ -75,6 +91,11 @@ int main()
     Sleep(3000ul);
 
     DeleteCriticalSection(&g_stCriticalSection);
+
+    for (unsigned long long i = 0ull; i < 8ull; ++i)
+    {
+        DeleteCriticalSection(&g_pValue2[i].stCriticalSection);
+    }
 
     return 0;
 }
